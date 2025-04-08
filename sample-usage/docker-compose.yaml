@@ -1,0 +1,47 @@
+networks:
+  default:
+      driver: bridge
+      ipam:
+          driver: default
+
+services:
+  service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - datadog
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://datadog:4318
+      OTEL_EXPORTER_OTLP_INSECURE: true
+    volumes:
+      - .:/app
+    networks:
+        default:
+  datadog:
+    pid: host
+    image: public.ecr.aws/datadog/agent:7.55.1
+    container_name: datadog
+    environment:
+      - DD_API_KEY=${DD_API_KEY:?setting DD_API_KEY in .env}
+      - DD_SITE=datadoghq.com
+      - DD_LOG_LEVEL=warn
+      - DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT=0.0.0.0:4318
+      - DD_LOGS_ENABLED=true
+      - DD_OTLP_CONFIG_LOGS_ENABLED=true
+      - DD_APM_ENABLED=true
+      - DD_OTLP_CONFIG_TRACES_ENABLED=true
+      - DD_USE_DOGSTATSD=false
+      - DD_DOGSTATSD_TAG_CARDINALITY=orchestrator
+      - DD_OTLP_CONFIG_METRICS_ENABLED=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup:/host/sys/fs/cgroup:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    expose:
+      - 4318
+    networks:
+        default:
